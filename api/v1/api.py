@@ -23,7 +23,13 @@ api = NinjaAPI(urls_namespace="rems_api_v1", version="1.0.0")
 NOTE: Registration of endpoints here 👇
 """
 
+from users.api.v1.api import router as users_router
 
+api.add_router(
+    "auth/",
+    users_router,
+    tags=["User Authentication"],
+)
 
 """
 NOTE: Registration of endpoints here 👆
