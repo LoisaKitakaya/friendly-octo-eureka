@@ -1,15 +1,16 @@
-from ninja import Router
+from ninja import Router, File
 from django.conf import settings
 from django.db import transaction
 from ninja.errors import HttpError
+from ninja.files import UploadedFile
 from django.contrib.auth import authenticate
 from users.models import User, ArtistProfile
 from utils.base import (
     login_jwt,
     AuthBearer,
-    decode_jwt,
     require_role,
     require_active,
+    check_if_is_active,
     get_authenticated_user,
 )
 from .schema import (
@@ -57,6 +58,19 @@ def create_account(request, data: UserInputSchema1):
     return {"message": "Account created successfully"}
 
 
+@router.post("account/profile-pic", auth=bearer, response=dict)
+@require_active
+def update_profile_pic(
+    request,
+    file: UploadedFile = File(...),  # type: ignore
+):
+    user = get_authenticated_user(request)
+
+    user.profile_picture.save(file.name, file, save=True)
+
+    return {"message": "Profile picture updated successfully"}
+
+
 @router.get(
     "account",
     auth=bearer,
@@ -92,9 +106,6 @@ def update_profile(request, data: UserInputSchema2):
     if data.bio:
         user.bio = data.bio
 
-    if data.country:
-        user.country = data.country
-
     if data.website:
         user.website = data.website
 
@@ -103,7 +114,7 @@ def update_profile(request, data: UserInputSchema2):
     return {"message": "User profile updated successfully"}
 
 
-@router.post("profile", response=dict)
+@router.post("profile", auth=bearer, response=dict)
 @require_active
 @require_role(is_artist=True)
 def create_artist_profile(request, data: ArtistProfileInputSchema1):
@@ -112,25 +123,65 @@ def create_artist_profile(request, data: ArtistProfileInputSchema1):
     ArtistProfile.objects.create(
         user=user,
         store_name=data.store_name,
+        about=data.about,
     )
 
     return {"message": "Artist profile created successfully"}
 
 
-@router.put("profile", response=dict)
+@router.put("profile", auth=bearer, response=dict)
 @require_active
 @require_role(is_artist=True)
 def update_artist_profile(request, data: ArtistProfileInputSchema2):
     user = get_authenticated_user(request)
 
     artist_profile = ArtistProfile.objects.get(user=user)
-    
+
     if data.store_name:
         artist_profile.store_name = data.store_name
-        
+
     if data.about:
         artist_profile.about = data.about
-        
+
     artist_profile.save()
 
     return {"message": "Artist profile updated successfully"}
+
+
+@router.post("profile/banner-pic", auth=bearer, response=dict)
+@require_active
+def update_banner_pic(
+    request,
+    file: UploadedFile = File(...),  # type: ignore
+):
+    user = get_authenticated_user(request)
+
+    artist_profile = ArtistProfile.objects.get(user=user)
+
+    artist_profile.banner_image.save(file.name, file, save=True)
+
+    return {"message": "Banner picture updated successfully"}
+
+
+@router.post("login", response=dict)
+def login(request, data: LoginUserSchema):
+    user_ = authenticate(username=data.username, password=data.password)
+
+    if user_ is not None:
+        user = User.objects.get(username=data.username)
+
+        if not user.is_active:
+            raise HttpError(401, "Inactive account. Contact administrator.")
+
+        auth_token = login_jwt(user)
+
+        return {
+            "token": auth_token,
+            "id": str(user.id),
+            "username": user.username,
+            "is_artist": user.is_artist,
+            "message": "Authentication successful",
+        }
+
+    else:
+        raise HttpError(401, "Authentication failed: Wrong email or password")

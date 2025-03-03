@@ -9,9 +9,11 @@ class UserSchema(ModelSchema):
         model = User
         exclude = [
             "groups",
+            "country",
             "password",
             "is_staff",
             "is_active",
+            "last_login",
             "is_superuser",
             "user_permissions",
         ]
@@ -22,6 +24,7 @@ class ArtistProfileSchema(ModelSchema):
         model = ArtistProfile
         fields = "__all__"
         depth = 1
+        exclude = ["user"]
 
     user: UserSchema
 
@@ -50,16 +53,18 @@ class UserInputSchema2(Schema):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     bio: Optional[str] = None
-    country: Optional[str] = None
     website: Optional[str] = None
+
 
 class LoginUserSchema(Schema):
     username: str
     password: str = Field(..., min_length=8, description=PASSWORD_DESC)
 
+
 class ArtistProfileInputSchema1(Schema):
     store_name: str
     about: str
+
 
 class ArtistProfileInputSchema2(Schema):
     store_name: Optional[str] = None
