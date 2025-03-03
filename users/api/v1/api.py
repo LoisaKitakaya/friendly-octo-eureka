@@ -2,15 +2,17 @@ from ninja import Router, File
 from django.conf import settings
 from django.db import transaction
 from ninja.errors import HttpError
+from utils.tasks import send_email
 from ninja.files import UploadedFile
 from django.contrib.auth import authenticate
 from users.models import User, ArtistProfile
 from utils.base import (
     login_jwt,
     AuthBearer,
+    decode_jwt,
+    new_user_jwt,
     require_role,
     require_active,
-    check_if_is_active,
     get_authenticated_user,
 )
 from .schema import (
@@ -19,6 +21,7 @@ from .schema import (
     UserInputSchema1,
     UserInputSchema2,
     ArtistProfileSchema,
+    EmailVerificationSchema,
     ArtistProfileInputSchema1,
     ArtistProfileInputSchema2,
 )
@@ -28,8 +31,42 @@ router = Router()
 bearer = AuthBearer()
 
 
+@router.post(
+    "email-verification",
+    response=dict,
+)
+def email_verification(
+    request,
+    data: EmailVerificationSchema,
+):
+    if User.objects.filter(email=data.email).exists():
+        raise HttpError(400, "A user with the same email address already exists.")
+
+    verification_token = new_user_jwt(email=data.email)
+
+    forward_url = settings.FRONTEND_URL
+
+    verification_url = (
+        f"{forward_url}/auth/create-account?verification_token={verification_token}"
+    )
+
+    subject = "Email Verification"
+
+    message = f"To complete account verification, click the following link: {verification_url}"
+
+    send_email.delay(
+        subject=subject,
+        message=message,
+        receiver_email_address=data.email,
+    )
+
+    return {"message": f"A verification email has been sent to {data.email}"}
+
+
 @router.post("account", response=dict)
-def create_account(request, data: UserInputSchema1):
+def create_account(request, data: UserInputSchema1, verification_token):
+    verification_token = decode_jwt(verification_token)
+
     with transaction.atomic():
         if (
             not User.objects.filter(username=data.username).exists()
@@ -37,7 +74,7 @@ def create_account(request, data: UserInputSchema1):
         ):
             new_user = User.objects.create(
                 username=data.username,
-                email=data.email,
+                email=verification_token.get("email"),
                 is_artist=data.is_artist,
             )
         else:

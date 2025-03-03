@@ -16,6 +16,10 @@ class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
     slug = models.SlugField(unique=True, blank=True)
 
+    class Meta:
+        verbose_name = "Product Category"
+        verbose_name_plural = "Product Categories"
+
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name)
@@ -59,6 +63,10 @@ class Product(models.Model):
     image = models.ImageField(upload_to="products/")
     is_active = models.BooleanField(default=True)
 
+    class Meta:
+        verbose_name = "Product"
+        verbose_name_plural = "Products"
+
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name)
@@ -92,6 +100,10 @@ class Review(models.Model):
     comment = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        verbose_name = "Product Review"
+        verbose_name_plural = "Product Reviews"
+
     def __str__(self):
         return f"{self.rating}/5 by {self.user.username}"
 
@@ -118,6 +130,8 @@ class Favorite(models.Model):
 
     class Meta:
         unique_together = ("user", "product")
+        verbose_name = "Favorite Product"
+        verbose_name_plural = "Favorite Products"
 
     def __str__(self):
         return f"{self.user.username} favorited {self.product.name}"

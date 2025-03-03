@@ -32,6 +32,10 @@ class ArtistProfileSchema(ModelSchema):
 PASSWORD_DESC = "Password must have at least 8 characters"
 
 
+class EmailVerificationSchema(Schema):
+    email: EmailStr
+
+
 class UserInputSchema1(Schema):
     username: str
     email: EmailStr

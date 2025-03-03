@@ -159,17 +159,11 @@ AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
 AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL")
 
-# You may disable default ACLs if you want to manage permissions yourself
-
 AWS_DEFAULT_ACL = None
-
-# Optional: Set object parameters for caching
 
 AWS_S3_OBJECT_PARAMETERS = {
     "CacheControl": "max-age=86400",
 }
-
-# Define MEDIA_URL using your custom domain or the endpoint
 
 MEDIA_URL = f"{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/"
 
@@ -188,5 +182,20 @@ STORAGES = {
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Organization's proper name
-
 ORGANIZATION_NAME = os.getenv("ORGANIZATION_NAME")
+
+# celery settings
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60
+
+# email settings
+EMAIL_HOST = "smtp.gmail.com"
+
+EMAIL_HOST_USER = os.getenv("EMAIL_ADDRESS")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_ADDRESS_PASSWORD")
+
+# App Servers
+FRONTEND_URL = os.getenv("FRONTEND_URL")

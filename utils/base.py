@@ -21,7 +21,7 @@ TOKEN_EXPIRY = {
 def get_authenticated_user(request) -> User:
     if not isinstance(request.auth, User):
         raise HttpError(401, "Unauthorized: Invalid authentication")
-    
+
     try:
         return User.objects.get(username=request.auth)
     except User.DoesNotExist:
@@ -30,14 +30,14 @@ def get_authenticated_user(request) -> User:
 
 def check_if_is_staff(request):
     user = get_authenticated_user(request)
-    
+
     if not user.is_staff:
         raise HttpError(401, "Unauthorized")
 
 
 def check_if_is_active(request):
     user = get_authenticated_user(request)
-    
+
     if not user.is_active:
         raise HttpError(401, "Inactive account. Contact administrator.")
 
@@ -79,7 +79,7 @@ def get_expiry_duration(token_type: str) -> timedelta:
     return TOKEN_EXPIRY.get(token_type, timedelta(days=1))
 
 
-def login_jwt(user: User) -> str | None:
+def login_jwt(user: User) -> str:
     try:
         expiry_date = timezone.now() + get_expiry_duration("login")
 
@@ -100,7 +100,7 @@ def login_jwt(user: User) -> str | None:
         raise Exception(str(e))
 
 
-def password_reset_jwt(user: User) -> str | None:
+def password_reset_jwt(user: User) -> str:
     try:
         expiry_date = timezone.now() + get_expiry_duration("password_reset")
 
@@ -121,7 +121,20 @@ def password_reset_jwt(user: User) -> str | None:
         raise Exception(str(e))
 
 
-def decode_jwt(token: str) -> dict | None:
+def new_user_jwt(email) -> str:
+    try:
+        token = jwt.encode(
+            {"email": email},
+            settings.SECRET_KEY,
+            algorithm="HS256",
+        )
+
+        return token
+    except Exception as e:
+        raise Exception(str(e))
+
+
+def decode_jwt(token: str) -> dict:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
 

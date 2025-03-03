@@ -46,6 +46,10 @@ class ArtistProfile(models.Model):
     slug = models.SlugField(unique=True, blank=True)
     about = models.TextField(blank=True, null=True)
 
+    class Meta:
+        verbose_name = "Artist Profile"
+        verbose_name_plural = "Artist Profiles"
+
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.store_name)

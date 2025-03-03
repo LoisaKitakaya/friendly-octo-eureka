@@ -43,6 +43,10 @@ class Order(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        verbose_name = "Buyer Order"
+        verbose_name_plural = "Buyer Orders"
+
     def __str__(self):
         return f"Order {self.id} - {self.user.username}"
 
@@ -67,6 +71,10 @@ class OrderItem(models.Model):
     )
     quantity = models.PositiveIntegerField(default=1)
     price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        verbose_name = "Buyer Order Item"
+        verbose_name_plural = "Buyer Order Items"
 
     def __str__(self):
         return f"{self.quantity} x {self.product.name}"
