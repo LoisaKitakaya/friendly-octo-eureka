@@ -70,7 +70,7 @@ def create_account(request, data: UserInputSchema1, verification_token):
     with transaction.atomic():
         if (
             not User.objects.filter(username=data.username).exists()
-            or not User.objects.filter(email=data.email).exists()
+            or not User.objects.filter(email=verification_token.get("email")).exists()
         ):
             new_user = User.objects.create(
                 username=data.username,
@@ -204,21 +204,20 @@ def update_banner_pic(
 def login(request, data: LoginUserSchema):
     user_ = authenticate(username=data.username, password=data.password)
 
-    if user_ is not None:
-        user = User.objects.get(username=data.username)
+    if user_ is None:
+        raise HttpError(401, "Authentication failed: Wrong username or password")
 
-        if not user.is_active:
-            raise HttpError(401, "Inactive account. Contact administrator.")
+    user = User.objects.get(username=data.username)
 
-        auth_token = login_jwt(user)
+    if not user.is_active:
+        raise HttpError(401, "Inactive account. Contact administrator.")
 
-        return {
-            "token": auth_token,
-            "id": str(user.id),
-            "username": user.username,
-            "is_artist": user.is_artist,
-            "message": "Authentication successful",
-        }
+    auth_token = login_jwt(user)
 
-    else:
-        raise HttpError(401, "Authentication failed: Wrong email or password")
+    return {
+        "token": auth_token,
+        "id": str(user.id),
+        "username": user.username,
+        "is_artist": user.is_artist,
+        "message": "Authentication successful",
+    }

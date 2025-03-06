@@ -53,7 +53,7 @@ def send_email(
                 receiver_email_address,
             ],
             html_message=html_content,
-            fail_silently=True,
+            fail_silently=False,
         )
 
     send_mail(
@@ -63,7 +63,7 @@ def send_email(
         recipient_list=[
             receiver_email_address,
         ],
-        fail_silently=True,
+        fail_silently=False,
     )
 
 

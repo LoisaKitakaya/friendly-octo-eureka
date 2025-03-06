@@ -38,7 +38,6 @@ class EmailVerificationSchema(Schema):
 
 class UserInputSchema1(Schema):
     username: str
-    email: EmailStr
     is_artist: bool
     password: str = Field(..., min_length=8, description=PASSWORD_DESC)
     confirm_password: str = Field(..., min_length=8, description=PASSWORD_DESC)
