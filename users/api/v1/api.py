@@ -202,6 +202,7 @@ def update_banner_pic(
 
 @router.post("login", response=dict)
 def login(request, data: LoginUserSchema):
+    print("Authentication beginning...")
     user_ = authenticate(username=data.username, password=data.password)
 
     if user_ is None:
