@@ -6,7 +6,7 @@ from typing import List, Optional
 from ninja.files import UploadedFile
 from users.models import ArtistProfile
 from django.db.models import Count, Avg
-from django.shortcuts import get_object_or_404
+from products.models import Category, Product, Review, Favorite
 from utils.base import (
     parse_uuid,
     AuthBearer,
@@ -14,7 +14,6 @@ from utils.base import (
     require_active,
     get_authenticated_user,
 )
-from products.models import Category, Product, Review, Favorite
 from .schema import (
     CategoryProductCountSchema,
     ProductRatingAnalyticsSchema,
@@ -28,11 +27,17 @@ from .schema import (
     FavoriteSchema,
     FavoriteCreateSchema,
     CategoryWithProductsSchema,
+    CategorySchema,
 )
 
 router = Router()
 
 bearer = AuthBearer()
+
+
+@router.get("/categories", response=List[CategorySchema])
+def list_categories(request):
+    return list(Category.objects.all())
 
 
 @router.get("/products", auth=bearer, response=List[ProductSchema])

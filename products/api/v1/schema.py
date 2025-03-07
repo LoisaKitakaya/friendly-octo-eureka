@@ -1,7 +1,9 @@
 import uuid
 from typing import Optional, List
 from ninja import ModelSchema, Schema
+from users.api.v1.schema import ArtistProfileSchema
 from products.models import Category, Product, Review, Favorite
+
 
 class CategorySchema(ModelSchema):
     class Meta:
@@ -17,6 +19,10 @@ class ProductSchema(ModelSchema):
     class Meta:
         model = Product
         fields = "__all__"
+        depth = 1
+
+    category: CategorySchema
+    artist: ArtistProfileSchema
 
 
 class ProductCreateSchema(Schema):
@@ -58,6 +64,7 @@ class FavoriteSchema(ModelSchema):
         model = Favorite
         fields = "__all__"
 
+
 class FavoriteCreateSchema(Schema):
     product_id: str
 
@@ -67,6 +74,7 @@ class CategoryWithProductsSchema(Schema):
     name: str
     slug: str
     products: List[ProductSchema]
+
 
 # schema.py (or analytics_schemas.py)
 
