@@ -60,7 +60,11 @@ class Product(models.Model):
         blank=True,
         related_name="products",
     )
-    image = models.ImageField(upload_to="products/")
+    image = models.ImageField(
+        upload_to="products/",
+        blank=True,
+        null=True,
+    )
     is_active = models.BooleanField(default=True)
 
     class Meta:
