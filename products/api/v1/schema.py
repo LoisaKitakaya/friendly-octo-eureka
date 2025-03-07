@@ -67,3 +67,35 @@ class CategoryWithProductsSchema(Schema):
     name: str
     slug: str
     products: List[ProductSchema]
+
+# schema.py (or analytics_schemas.py)
+
+import uuid
+from typing import Optional
+from ninja import Schema
+
+
+class CategoryProductCountSchema(Schema):
+    category_id: uuid.UUID
+    category_name: str
+    product_count: int
+
+
+class ProductRatingAnalyticsSchema(Schema):
+    product_id: uuid.UUID
+    product_name: str
+    average_rating: Optional[float] = None  # May be None if no reviews exist
+    review_count: int
+
+
+class ProductFavoriteAnalyticsSchema(Schema):
+    product_id: uuid.UUID
+    product_name: str
+    favorites_count: int
+
+
+class OverallAnalyticsSchema(Schema):
+    total_categories: int
+    total_products: int
+    total_reviews: int
+    total_favorites: int

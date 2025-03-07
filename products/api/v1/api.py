@@ -1,16 +1,25 @@
-# api.py
+# router.py
 
-import uuid
-from ninja import NinjaAPI, File
+from typing import List
+from ninja import Router, File
 from typing import List, Optional
 from ninja.files import UploadedFile
-from users.models import ArtistProfile, User
+from users.models import ArtistProfile
+from django.db.models import Count, Avg
 from django.shortcuts import get_object_or_404
-from utils.base import get_authenticated_user, parse_uuid
+from utils.base import (
+    parse_uuid,
+    AuthBearer,
+    require_role,
+    require_active,
+    get_authenticated_user,
+)
 from products.models import Category, Product, Review, Favorite
 from .schema import (
-    CategorySchema,
-    CategoryCreateSchema,
+    CategoryProductCountSchema,
+    ProductRatingAnalyticsSchema,
+    ProductFavoriteAnalyticsSchema,
+    OverallAnalyticsSchema,
     ProductSchema,
     ProductUpdateSchema,
     ProductCreateSchema,
@@ -21,15 +30,21 @@ from .schema import (
     CategoryWithProductsSchema,
 )
 
-api = NinjaAPI()
+router = Router()
+
+bearer = AuthBearer()
 
 
-@api.get("/products", response=List[ProductSchema])
+@router.get("/products", auth=bearer, response=List[ProductSchema])
+@require_active
 def list_products(request):
     return list(Product.objects.all())
 
 
-@api.get("/products-by-category", response=List[CategoryWithProductsSchema])
+@router.get(
+    "/products-by-category", auth=bearer, response=List[CategoryWithProductsSchema]
+)
+@require_active
 def products_by_category(request):
     categories = Category.objects.all().prefetch_related("products")
 
@@ -49,7 +64,9 @@ def products_by_category(request):
     return result
 
 
-@api.get("/products/{product_id}", response=ProductSchema)
+@router.get("/products/{product_id}", auth=bearer, response=ProductSchema)
+@require_active
+@require_role(is_artist=True)
 def get_product(request, product_id: str):
     user = get_authenticated_user(request)
 
@@ -58,7 +75,9 @@ def get_product(request, product_id: str):
     return Product.objects.get(artist=artist, id=parse_uuid(product_id))
 
 
-@api.post("/products", response=dict)
+@router.post("/products", auth=bearer, response=dict)
+@require_active
+@require_role(is_artist=True)
 def create_product(
     request,
     data: ProductCreateSchema,
@@ -87,7 +106,9 @@ def create_product(
     return {"message": "Product created successfully"}
 
 
-@api.put("/products/{product_id}", response=dict)
+@router.put("/products/{product_id}", auth=bearer, response=dict)
+@require_active
+@require_role(is_artist=True)
 def update_product(
     request,
     product_id: str,
@@ -128,7 +149,9 @@ def update_product(
     return {"message": "Product updated successfully"}
 
 
-@api.delete("/products/{product_id}", response=dict)
+@router.delete("/products/{product_id}", auth=bearer, response=dict)
+@require_active
+@require_role(is_artist=True)
 def delete_product(request, product_id: str):
     user = get_authenticated_user(request)
 
@@ -141,19 +164,23 @@ def delete_product(request, product_id: str):
     return {"message": "Product deleted successfully"}
 
 
-@api.get("/reviews", response=List[ReviewSchema])
+@router.get("/reviews", auth=bearer, response=List[ReviewSchema])
+@require_active
 def list_reviews(request):
     return list(Review.objects.all())
 
 
-@api.get("/reviews/{review_id}", response=ReviewSchema)
+@router.get("/reviews/{review_id}", auth=bearer, response=ReviewSchema)
+@require_active
 def get_review(request, review_id: str):
     user = get_authenticated_user(request)
 
     return Review.objects.get(user=user, id=parse_uuid(review_id))
 
 
-@api.post("/reviews", response=dict)
+@router.post("/reviews", auth=bearer, response=dict)
+@require_active
+@require_role(is_artist=True)
 def create_review(request, data: ReviewCreateSchema):
     user = get_authenticated_user(request)
 
@@ -171,7 +198,9 @@ def create_review(request, data: ReviewCreateSchema):
     return {"message": "Review created successfully"}
 
 
-@api.put("/reviews/{review_id}", response=dict)
+@router.put("/reviews/{review_id}", auth=bearer, response=dict)
+@require_active
+@require_role(is_artist=True)
 def update_review(request, review_id: str, data: ReviewCreateSchema):
     user = get_authenticated_user(request)
 
@@ -188,7 +217,9 @@ def update_review(request, review_id: str, data: ReviewCreateSchema):
     return {"message": "Review updated successfully"}
 
 
-@api.delete("/reviews/{review_id}", response=dict)
+@router.delete("/reviews/{review_id}", auth=bearer, response=dict)
+@require_active
+@require_role(is_artist=True)
 def delete_review(request, review_id: str):
     user = get_authenticated_user(request)
 
@@ -199,18 +230,20 @@ def delete_review(request, review_id: str):
     return {"message": "Review deleted successfully"}
 
 
-@api.get("/favorites", response=List[FavoriteSchema])
+@router.get("/favorites", auth=bearer, response=List[FavoriteSchema])
+@require_active
 def list_favorites(request):
     return list(Favorite.objects.all())
 
 
-# @api.get("/favorites/{favorite_id}", response=FavoriteSchema)
+# @router.get("/favorites/{favorite_id}", response=FavoriteSchema)
 # def get_favorite(request, favorite_id: str):
 #     favorite = get_object_or_404(Favorite, id=favorite_id)
 #     return favorite
 
 
-@api.post("/favorites", response=dict)
+@router.post("/favorites", auth=bearer, response=dict)
+@require_active
 def create_favorite(request, data: FavoriteCreateSchema):
     user = get_authenticated_user(request)
 
@@ -226,7 +259,8 @@ def create_favorite(request, data: FavoriteCreateSchema):
     return {"message": "Favorite created"}
 
 
-@api.delete("/favorites", response=dict)
+@router.delete("/favorites", auth=bearer, response=dict)
+@require_active
 def delete_favorite(request, data: FavoriteCreateSchema):
     user = get_authenticated_user(request)
 
@@ -240,3 +274,86 @@ def delete_favorite(request, data: FavoriteCreateSchema):
     ).delete()
 
     return {"message": "Favorite removed"}
+
+
+@router.get(
+    "/analytics/products-count-per-category",
+    auth=bearer,
+    response=List[CategoryProductCountSchema],
+)
+@require_active
+@require_role(is_artist=True)
+def products_count_per_category(request):
+    categories = Category.objects.annotate(product_count=Count("products"))
+    result = []
+    for cat in categories:
+        result.append(
+            {
+                "category_id": cat.id,
+                "category_name": cat.name,
+                "product_count": cat.product_count,  # type: ignore
+            }
+        )
+    return result
+
+
+@router.get(
+    "/analytics/product-ratings",
+    auth=bearer,
+    response=List[ProductRatingAnalyticsSchema],
+)
+@require_active
+@require_role(is_artist=True)
+def product_ratings_analytics(request):
+    products = Product.objects.annotate(
+        average_rating=Avg("reviews__rating"), review_count=Count("reviews")
+    )
+    result = []
+    for prod in products:
+        result.append(
+            {
+                "product_id": prod.id,
+                "product_name": prod.name,
+                "average_rating": prod.average_rating,  # type: ignore
+                "review_count": prod.review_count,  # type: ignore
+            }
+        )
+    return result
+
+
+@router.get(
+    "/analytics/product-favorites",
+    auth=bearer,
+    response=List[ProductFavoriteAnalyticsSchema],
+)
+@require_active
+@require_role(is_artist=True)
+def product_favorites_analytics(request):
+    products = Product.objects.annotate(favorites_count=Count("favorited_by"))
+    result = []
+    for prod in products:
+        result.append(
+            {
+                "product_id": prod.id,
+                "product_name": prod.name,
+                "favorites_count": prod.favorites_count,  # type: ignore
+            }
+        )
+    return result
+
+
+@router.get("/analytics/summary", auth=bearer, response=OverallAnalyticsSchema)
+@require_active
+@require_role(is_artist=True)
+def overall_analytics(request):
+    total_categories = Category.objects.count()
+    total_products = Product.objects.count()
+    total_reviews = Review.objects.count()
+    total_favorites = Favorite.objects.count()
+
+    return {
+        "total_categories": total_categories,
+        "total_products": total_products,
+        "total_reviews": total_reviews,
+        "total_favorites": total_favorites,
+    }

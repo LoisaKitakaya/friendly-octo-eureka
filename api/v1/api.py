@@ -24,11 +24,18 @@ NOTE: Registration of endpoints here 👇
 """
 
 from users.api.v1.api import router as users_router
+from products.api.v1.api import router as products_router
 
 api.add_router(
     "auth/",
     users_router,
     tags=["User Authentication"],
+)
+
+api.add_router(
+    "store/",
+    products_router,
+    tags=["Seller/Store"],
 )
 
 """
