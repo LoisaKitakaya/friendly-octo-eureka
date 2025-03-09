@@ -6,6 +6,8 @@ from typing import List, Optional
 from ninja.files import UploadedFile
 from users.models import ArtistProfile
 from django.db.models import Count, Avg
+from django.db.models import Q
+from ninja import Query
 from products.models import Category, Product, Review, Favorite
 from utils.base import (
     parse_uuid,
@@ -44,6 +46,39 @@ def list_categories(request):
 @require_active
 def list_products(request):
     return list(Product.objects.all())
+
+
+@router.get("/products/seller", auth=bearer, response=List[ProductSchema])
+@require_active
+@require_role(is_artist=True)
+def list_seller_products(request):
+    user = get_authenticated_user(request)
+
+    artist = ArtistProfile.objects.get(user=user)
+
+    return list(Product.objects.filter(artist=artist))
+
+
+@router.get("/products/filter")
+def list_filtered_products(
+    request,
+    search: str = None,  # type: ignore
+    category: str = "all",
+):
+    # Build query
+    query = Q(is_active=True)
+
+    if search:
+        query &= Q(name__icontains=search)
+
+    if category != "all":
+        query &= Q(category__slug=category)
+
+    products = Product.objects.filter(query)
+
+    return {
+        "results": [ProductSchema.from_orm(p) for p in products],
+    }
 
 
 @router.get(
@@ -111,14 +146,14 @@ def create_product(
     return {"message": "Product created successfully"}
 
 
-@router.put("/products/{product_id}", auth=bearer, response=dict)
+@router.post("/products/{product_id}/update", auth=bearer, response=dict)
 @require_active
 @require_role(is_artist=True)
 def update_product(
     request,
     product_id: str,
     data: ProductUpdateSchema,
-    file: Optional[UploadedFile] = File(...),  # type: ignore
+    file: Optional[UploadedFile] = File(default=None),  # type: ignore
 ):
     user = get_authenticated_user(request)
 
@@ -146,10 +181,10 @@ def update_product(
 
         product.category = category
 
+    product.save()
+
     if file:
         product.image.save(file.name, file, save=True)
-
-    product.save()
 
     return {"message": "Product updated successfully"}
 
