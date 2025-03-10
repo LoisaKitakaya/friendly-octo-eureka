@@ -2,12 +2,12 @@
 
 from typing import List
 from ninja import Router, File
+from django.db.models import Q
 from typing import List, Optional
 from ninja.files import UploadedFile
+from django.db import IntegrityError
 from users.models import ArtistProfile
 from django.db.models import Count, Avg
-from django.db.models import Q
-from ninja import Query
 from products.models import Category, Product, Review, Favorite
 from utils.base import (
     parse_uuid,
@@ -273,13 +273,9 @@ def delete_review(request, review_id: str):
 @router.get("/favorites", auth=bearer, response=List[FavoriteSchema])
 @require_active
 def list_favorites(request):
-    return list(Favorite.objects.all())
+    user = get_authenticated_user(request)
 
-
-# @router.get("/favorites/{favorite_id}", response=FavoriteSchema)
-# def get_favorite(request, favorite_id: str):
-#     favorite = get_object_or_404(Favorite, id=favorite_id)
-#     return favorite
+    return list(Favorite.objects.filter(user=user))
 
 
 @router.post("/favorites", auth=bearer, response=dict)
@@ -287,14 +283,15 @@ def list_favorites(request):
 def create_favorite(request, data: FavoriteCreateSchema):
     user = get_authenticated_user(request)
 
-    artist = ArtistProfile.objects.get(user=user)
+    product = Product.objects.get(id=parse_uuid(data.product_id))
 
-    product = Product.objects.get(artist=artist, id=parse_uuid(data.product_id))
-
-    Favorite.objects.create(
-        user=user,
-        product=product,
-    )
+    try:
+        Favorite.objects.create(
+            user=user,
+            product=product,
+        )
+    except IntegrityError:
+        pass
 
     return {"message": "Favorite created"}
 
@@ -304,14 +301,15 @@ def create_favorite(request, data: FavoriteCreateSchema):
 def delete_favorite(request, data: FavoriteCreateSchema):
     user = get_authenticated_user(request)
 
-    artist = ArtistProfile.objects.get(user=user)
+    product = Product.objects.get(id=parse_uuid(data.product_id))
 
-    product = Product.objects.get(artist=artist, id=parse_uuid(data.product_id))
-
-    Favorite.objects.get(
-        user=user,
-        product=product,
-    ).delete()
+    try:
+        Favorite.objects.get(
+            user=user,
+            product=product,
+        ).delete()
+    except IntegrityError:
+        pass
 
     return {"message": "Favorite removed"}
 
