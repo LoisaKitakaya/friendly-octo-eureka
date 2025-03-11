@@ -16,13 +16,14 @@ Including another URLconf
 """
 
 from api.v1.api import api
-from django.urls import path
 from django.conf import settings
 from django.contrib import admin
+from django.urls import path, include
 
 urlpatterns = [
     path("api/v1/", api.urls),
     path("admin/", admin.site.urls),
+    path("auth/", include("users.urls")),
 ]
 
 admin.site.site_header = f"{settings.ORGANIZATION_NAME} - Admin"

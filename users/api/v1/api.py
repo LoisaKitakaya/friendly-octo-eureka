@@ -13,6 +13,7 @@ from utils.base import (
     new_user_jwt,
     require_role,
     require_active,
+    password_reset_jwt,
     get_authenticated_user,
 )
 from .schema import (
@@ -22,6 +23,7 @@ from .schema import (
     UserInputSchema2,
     ArtistProfileSchema,
     EmailVerificationSchema,
+    UserPasswordResetSchema,
     ArtistProfileInputSchema1,
     ArtistProfileInputSchema2,
 )
@@ -31,14 +33,8 @@ router = Router()
 bearer = AuthBearer()
 
 
-@router.post(
-    "email-verification",
-    response=dict,
-)
-def email_verification(
-    request,
-    data: EmailVerificationSchema,
-):
+@router.post("email-verification", response=dict)
+def email_verification(request, data: EmailVerificationSchema):
     if User.objects.filter(email=data.email).exists():
         raise HttpError(400, "A user with the same email address already exists.")
 
@@ -61,6 +57,35 @@ def email_verification(
     )
 
     return {"message": f"A verification email has been sent to {data.email}"}
+
+
+@router.post("request-password-reset", response=dict)
+def request_password_reset(request, data: UserPasswordResetSchema):
+    if not User.objects.filter(email=data.email).exists():
+        raise HttpError(400, "The email address provided does not exists.")
+
+    if not User.objects.get(email=data.email).is_active:
+        raise HttpError(400, "You must be an active user to be able to reset password")
+
+    user = User.objects.get(email=data.email)
+
+    reset_token = password_reset_jwt(user)
+
+    reset_link = (
+        f"{settings.BACKEND_URL}/auth/update_password?reset_token={reset_token}"
+    )
+
+    subject = "Password Recovery"
+
+    message = f"Click the following link to reset your password: {reset_link}."
+
+    send_email.delay(
+        subject=subject,
+        message=message,
+        receiver_email_address=data.email,
+    )
+
+    return {"message": f"A password reset email has been sent to {data.email}"}
 
 
 @router.post("account", response=dict)
@@ -97,10 +122,7 @@ def create_account(request, data: UserInputSchema1, verification_token):
 
 @router.post("account/profile-pic", auth=bearer, response=dict)
 @require_active
-def update_profile_pic(
-    request,
-    file: UploadedFile = File(...),  # type: ignore
-):
+def update_profile_pic(request, file: UploadedFile = File(...)):  # type: ignore
     user = get_authenticated_user(request)
 
     user.profile_picture.save(file.name, file, save=True)
@@ -108,11 +130,7 @@ def update_profile_pic(
     return {"message": "Profile picture updated successfully"}
 
 
-@router.get(
-    "account",
-    auth=bearer,
-    response=ArtistProfileSchema | UserSchema,
-)
+@router.get("account", auth=bearer, response=ArtistProfileSchema | UserSchema)
 @require_active
 def view_my_profile(request):
     user = get_authenticated_user(request)
@@ -187,10 +205,7 @@ def update_artist_profile(request, data: ArtistProfileInputSchema2):
 
 @router.post("profile/banner-pic", auth=bearer, response=dict)
 @require_active
-def update_banner_pic(
-    request,
-    file: UploadedFile = File(...),  # type: ignore
-):
+def update_banner_pic(request, file: UploadedFile = File(...)):  # type: ignore
     user = get_authenticated_user(request)
 
     artist_profile = ArtistProfile.objects.get(user=user)

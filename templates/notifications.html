@@ -1,0 +1,54 @@
+<!-- if -->
+{% if messages %}
+<!-- if -->
+
+<!-- for -->
+{% for message in messages %}
+<!-- for -->
+
+<!-- if -->
+{% if message.tags == 'success' %}
+<!-- if -->
+<div style="position: fixed; top: 0" class="container is-fluid py-6" id="alert">
+  <div class="notification is-success">
+    <button class="delete" onClick="closeAlert()"></button>
+    {{ message }}
+  </div>
+</div>
+<!-- elif -->
+{% elif message.tags == 'error' %}
+<!-- elif -->
+<div style="position: fixed; top: 0" class="container is-fluid py-6" id="alert">
+  <div class="notification is-danger">
+    <button class="delete" onClick="closeAlert()"></button>
+    {{ message }}
+  </div>
+</div>
+<!-- elif -->
+{% elif message.tags == 'info' %}
+<!-- elif -->
+<div style="position: fixed; top: 0" class="container is-fluid py-6" id="alert">
+  <div class="notification is-info">
+    <button class="delete" onClick="closeAlert()"></button>
+    {{ message }}
+  </div>
+</div>
+<!-- endif -->
+{% endif %}
+<!-- endif -->
+
+<!-- endfor -->
+{% endfor %}
+<!-- endfor -->
+
+<!-- endif -->
+{% endif %}
+<!-- endif -->
+
+<script>
+  function closeAlert() {
+    const alertContainer = document.getElementById("alert");
+
+    alertContainer.remove();
+  }
+</script>

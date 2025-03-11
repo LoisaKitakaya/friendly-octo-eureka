@@ -36,6 +36,10 @@ class EmailVerificationSchema(Schema):
     email: EmailStr
 
 
+class UserPasswordResetSchema(Schema):
+    email: EmailStr
+
+
 class UserInputSchema1(Schema):
     username: str
     is_artist: bool
