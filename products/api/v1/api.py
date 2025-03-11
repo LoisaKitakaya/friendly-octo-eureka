@@ -43,7 +43,7 @@ def list_categories(request):
     return list(Category.objects.all())
 
 
-@router.get("/products", auth=bearer, response=List[ProductSchema])
+@router.get("/products", response=List[ProductSchema])
 @require_active
 def list_products(request):
     return list(Product.objects.all())
@@ -60,7 +60,7 @@ def list_seller_products(request):
     return list(Product.objects.filter(artist=artist))
 
 
-@router.get("/products/store/{store_slug}", auth=bearer, response=StoreSchema)
+@router.get("/products/store/{store_slug}", response=StoreSchema)
 @require_active
 def list_store_products(request, store_slug: str):
     artist = ArtistProfile.objects.get(slug=store_slug)
@@ -73,7 +73,7 @@ def list_store_products(request, store_slug: str):
     }
 
 
-@router.get("/products/filter", auth=bearer, response=dict)
+@router.get("/products/filter", response=dict)
 @require_active
 def list_filtered_products(
     request,
@@ -97,7 +97,7 @@ def list_filtered_products(
 
 
 @router.get(
-    "/products-by-category", auth=bearer, response=List[CategoryWithProductsSchema]
+    "/products-by-category", response=List[CategoryWithProductsSchema]
 )
 @require_active
 def products_by_category(request):
@@ -119,7 +119,7 @@ def products_by_category(request):
     return result
 
 
-@router.get("/products/{product_id}", auth=bearer, response=ProductSchema)
+@router.get("/products/{product_id}", response=ProductSchema)
 @require_active
 def get_product(request, product_id: str):
     return Product.objects.get(id=parse_uuid(product_id))
