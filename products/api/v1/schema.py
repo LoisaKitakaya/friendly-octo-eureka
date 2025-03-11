@@ -1,5 +1,6 @@
 import uuid
 from typing import Optional, List
+from pydantic import field_serializer
 from ninja import ModelSchema, Schema
 from users.api.v1.schema import ArtistProfileSchema
 from products.models import Category, Product, Review, Favorite
@@ -23,6 +24,20 @@ class ProductSchema(ModelSchema):
 
     category: CategorySchema
     artist: ArtistProfileSchema
+
+
+class ProductSchemaTwo(ModelSchema):
+    class Meta:
+        model = Product
+        fields = "__all__"
+        depth = 1
+
+    category: CategorySchema
+
+
+class StoreSchema(Schema):
+    artist: ArtistProfileSchema
+    products: List[ProductSchemaTwo]
 
 
 class ProductCreateSchema(Schema):

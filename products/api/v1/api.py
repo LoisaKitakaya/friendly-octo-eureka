@@ -17,6 +17,7 @@ from utils.base import (
     get_authenticated_user,
 )
 from .schema import (
+    StoreSchema,
     CategoryProductCountSchema,
     ProductRatingAnalyticsSchema,
     ProductFavoriteAnalyticsSchema,
@@ -37,7 +38,7 @@ router = Router()
 bearer = AuthBearer()
 
 
-@router.get("/categories", response=List[CategorySchema])
+@router.get("/categories", auth=bearer, response=List[CategorySchema])
 def list_categories(request):
     return list(Category.objects.all())
 
@@ -59,7 +60,21 @@ def list_seller_products(request):
     return list(Product.objects.filter(artist=artist))
 
 
-@router.get("/products/filter")
+@router.get("/products/store/{store_slug}", auth=bearer, response=StoreSchema)
+@require_active
+def list_store_products(request, store_slug: str):
+    artist = ArtistProfile.objects.get(slug=store_slug)
+
+    products = list(Product.objects.filter(artist=artist))
+
+    return {
+        "artist": artist,
+        "products": products,
+    }
+
+
+@router.get("/products/filter", auth=bearer, response=dict)
+@require_active
 def list_filtered_products(
     request,
     search: str = None,  # type: ignore
@@ -106,13 +121,8 @@ def products_by_category(request):
 
 @router.get("/products/{product_id}", auth=bearer, response=ProductSchema)
 @require_active
-@require_role(is_artist=True)
 def get_product(request, product_id: str):
-    user = get_authenticated_user(request)
-
-    artist = ArtistProfile.objects.get(user=user)
-
-    return Product.objects.get(artist=artist, id=parse_uuid(product_id))
+    return Product.objects.get(id=parse_uuid(product_id))
 
 
 @router.post("/products", auth=bearer, response=dict)
