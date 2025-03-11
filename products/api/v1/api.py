@@ -38,7 +38,7 @@ router = Router()
 bearer = AuthBearer()
 
 
-@router.get("/categories", auth=bearer, response=List[CategorySchema])
+@router.get("/categories", response=List[CategorySchema])
 def list_categories(request):
     return list(Category.objects.all())
 
