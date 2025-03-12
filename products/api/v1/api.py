@@ -44,7 +44,6 @@ def list_categories(request):
 
 
 @router.get("/products", response=List[ProductSchema])
-@require_active
 def list_products(request):
     return list(Product.objects.all())
 
@@ -61,7 +60,6 @@ def list_seller_products(request):
 
 
 @router.get("/products/store/{store_slug}", response=StoreSchema)
-@require_active
 def list_store_products(request, store_slug: str):
     artist = ArtistProfile.objects.get(slug=store_slug)
 
@@ -74,7 +72,6 @@ def list_store_products(request, store_slug: str):
 
 
 @router.get("/products/filter", response=dict)
-@require_active
 def list_filtered_products(
     request,
     search: str = None,  # type: ignore
@@ -96,10 +93,7 @@ def list_filtered_products(
     }
 
 
-@router.get(
-    "/products-by-category", response=List[CategoryWithProductsSchema]
-)
-@require_active
+@router.get("/products-by-category", response=List[CategoryWithProductsSchema])
 def products_by_category(request):
     categories = Category.objects.all().prefetch_related("products")
 
@@ -120,7 +114,6 @@ def products_by_category(request):
 
 
 @router.get("/products/{product_id}", response=ProductSchema)
-@require_active
 def get_product(request, product_id: str):
     return Product.objects.get(id=parse_uuid(product_id))
 
