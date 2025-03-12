@@ -273,12 +273,17 @@ def delete_review(request, review_id: str):
     return {"message": "Review deleted successfully"}
 
 
-@router.get("/favorites", auth=bearer, response=List[FavoriteSchema])
+@router.get("/favorites", auth=bearer, response=List[ProductSchema])
 @require_active
 def list_favorites(request):
     user = get_authenticated_user(request)
 
-    return list(Favorite.objects.filter(user=user))
+    # Get favorited products through the reverse relation
+    favorited_products = Product.objects.filter(
+        favorited_by__user=user,
+    ).select_related("artist", "category")
+
+    return favorited_products
 
 
 @router.post("/favorites", auth=bearer, response=dict)
