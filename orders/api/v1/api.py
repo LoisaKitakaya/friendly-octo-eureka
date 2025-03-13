@@ -15,7 +15,7 @@ router = Router()
 bearer = AuthBearer()
 
 
-@router.get("/create-order", auth=bearer, response=dict)
+@router.post("/create-order", auth=bearer, response=dict)
 @require_active
 def create_order(request, data: OrderInputSchema):
     user = get_authenticated_user(request)
@@ -40,5 +40,5 @@ def create_order(request, data: OrderInputSchema):
 
     return {
         "message": "Order created successfully",
-        "payment_url": payment_url,
+        "payment_url": payment_url.get("payment_url"),
     }

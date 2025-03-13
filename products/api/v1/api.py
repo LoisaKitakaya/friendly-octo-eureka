@@ -8,7 +8,7 @@ from ninja.files import UploadedFile
 from django.db import IntegrityError
 from users.models import ArtistProfile
 from django.db.models import Count, Avg
-from utils.stripe import create_product, update_product  # type: ignore
+from utils.stripe import _create_product, _update_product
 from products.models import Category, Product, Review, Favorite
 from utils.base import (
     parse_uuid,
@@ -147,7 +147,7 @@ def create_product(
 
     product.image.save(file.name, file, save=True)
 
-    stripe_product = create_product(product)  # type: ignore
+    stripe_product = _create_product(product)
 
     product.stripe_product_id = stripe_product.get("stripe_product_id")
     product.stripe_price_id = stripe_product.get("stripe_price_id")
@@ -197,7 +197,7 @@ def update_product(
     if file:
         product.image.save(file.name, file, save=True)
 
-    stripe_product = update_product.delay(product)
+    stripe_product = _update_product.delay(product)
 
     product.stripe_price_id = stripe_product.get("stripe_price_id")
 

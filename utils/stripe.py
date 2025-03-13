@@ -6,7 +6,7 @@ from orders.models import Order, OrderItem
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
-def create_product(product: Product) -> dict:
+def _create_product(product: Product) -> dict:
     """Create a new product on Stripe"""
 
     try:
@@ -30,7 +30,7 @@ def create_product(product: Product) -> dict:
         raise Exception(f"Error creating product on Stripe: {e}")
 
 
-def update_product(product: Product) -> dict:
+def _update_product(product: Product) -> dict:
     """Update a product on stripe"""
 
     try:

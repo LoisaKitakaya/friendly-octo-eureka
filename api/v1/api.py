@@ -25,6 +25,7 @@ NOTE: Registration of endpoints here 👇
 
 from users.api.v1.api import router as users_router
 from products.api.v1.api import router as products_router
+from orders.api.v1.api import router as orders_router
 
 api.add_router(
     "auth/",
@@ -36,6 +37,12 @@ api.add_router(
     "store/",
     products_router,
     tags=["Seller/Store"],
+)
+
+api.add_router(
+    "orders/",
+    orders_router,
+    tags=["Product Orders"],
 )
 
 """
