@@ -147,12 +147,7 @@ def create_product(
 
     product.image.save(file.name, file, save=True)
 
-    stripe_product = _create_product(product)
-
-    product.stripe_product_id = stripe_product.get("stripe_product_id")
-    product.stripe_price_id = stripe_product.get("stripe_price_id")
-
-    product.save()
+    _create_product.delay(user.id, product.id)
 
     return {"message": "Product created successfully"}
 
@@ -197,11 +192,7 @@ def update_product(
     if file:
         product.image.save(file.name, file, save=True)
 
-    stripe_product = _update_product.delay(product)
-
-    product.stripe_price_id = stripe_product.get("stripe_price_id")
-
-    product.save()
+    _update_product.delay(user.id, product.id)
 
     return {"message": "Product updated successfully"}
 

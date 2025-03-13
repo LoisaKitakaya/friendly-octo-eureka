@@ -76,3 +76,4 @@ class ArtistProfileInputSchema1(Schema):
 class ArtistProfileInputSchema2(Schema):
     store_name: Optional[str] = None
     about: Optional[str] = None
+    stripe_secret_key: Optional[str] = None

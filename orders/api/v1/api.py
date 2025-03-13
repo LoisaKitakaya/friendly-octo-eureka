@@ -36,7 +36,7 @@ def create_order(request, data: OrderInputSchema):
 
     order.save()
 
-    payment_url = create_payment_link(order)
+    payment_url = create_payment_link(order.id)
 
     return {
         "message": "Order created successfully",

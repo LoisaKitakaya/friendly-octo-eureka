@@ -1,15 +1,26 @@
+import uuid
 import stripe
+from celery import shared_task
 from django.conf import settings
 from products.models import Product
-from orders.models import Order, OrderItem
+from orders.models import OrderItem
+from users.models import ArtistProfile
 
-stripe.api_key = settings.STRIPE_SECRET_KEY
 
-
-def _create_product(product: Product) -> dict:
+@shared_task
+def _create_product(user_id: uuid.UUID, product_id: uuid.UUID) -> None:
     """Create a new product on Stripe"""
 
     try:
+        artist_profile = ArtistProfile.objects.get(user__id=user_id)
+
+        if artist_profile.decrypt_secret_key() is None:
+            raise Exception("Missing Stripe secret key for artist store")
+
+        stripe.api_key = artist_profile.decrypt_secret_key()
+
+        product = Product.objects.get(id=product_id)
+
         stripe_product = stripe.Product.create(
             name=product.name,
             description=product.description,
@@ -22,18 +33,28 @@ def _create_product(product: Product) -> dict:
             product=stripe_product.id,
         )
 
-        return {
-            "stripe_product_id": stripe_product.id,
-            "stripe_price_id": stripe_price.id,
-        }
+        product.stripe_product_id = stripe_product.id
+        product.stripe_price_id = stripe_price.id
+
+        product.save()
     except Exception as e:
         raise Exception(f"Error creating product on Stripe: {e}")
 
 
-def _update_product(product: Product) -> dict:
+@shared_task
+def _update_product(user_id: uuid.UUID, product_id: uuid.UUID) -> None:
     """Update a product on stripe"""
 
     try:
+        artist_profile = ArtistProfile.objects.get(user__id=user_id)
+
+        if artist_profile.decrypt_secret_key() is None:
+            raise Exception("Missing Stripe secret key for artist store")
+
+        stripe.api_key = artist_profile.decrypt_secret_key()
+
+        product = Product.objects.get(id=product_id)
+
         stripe_product = stripe.Product.modify(
             str(product.stripe_product_id),
             name=product.name,
@@ -47,17 +68,32 @@ def _update_product(product: Product) -> dict:
             product=stripe_product.id,
         )
 
-        return {"stripe_price_id": stripe_price.id}
+        product.stripe_price_id = stripe_price.id
+
+        product.save()
     except Exception as e:
         raise Exception(f"Error updating product on Stripe: {e}")
 
 
-def create_payment_link(order: Order) -> dict:
+def create_payment_link(order_id: uuid.UUID, **kwargs) -> dict:
     """Create a payment link"""
 
-    order_items = OrderItem.objects.filter(order=order)
-
     try:
+        user_id = kwargs.get("user_id")
+
+        if user_id:
+            artist_profile = ArtistProfile.objects.get(user__id=user_id)
+
+            if artist_profile.decrypt_secret_key() is None:
+                raise Exception("Missing Stripe secret key for artist store")
+
+            stripe.api_key = artist_profile.decrypt_secret_key()
+
+        else:
+            stripe.api_key = settings.STRIPE_SECRET_KEY
+
+        order_items = OrderItem.objects.filter(order__id=order_id)
+
         stripe_payment_link = stripe.PaymentLink.create(
             line_items=[
                 {

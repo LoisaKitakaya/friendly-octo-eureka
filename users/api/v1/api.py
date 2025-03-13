@@ -2,8 +2,8 @@ from ninja import Router, File
 from django.conf import settings
 from django.db import transaction
 from ninja.errors import HttpError
-from utils.tasks import send_email
 from ninja.files import UploadedFile
+from utils.notifications import send_email
 from django.contrib.auth import authenticate
 from users.models import User, ArtistProfile
 from utils.base import (
@@ -136,7 +136,7 @@ def view_my_profile(request):
     user = get_authenticated_user(request)
 
     if ArtistProfile.objects.filter(user=user).exists():
-        return ArtistProfile.objects.get(user=user)
+        return ArtistProfile.objects.get(user=user).decrypt_credentials()
     else:
         return user
 
@@ -197,6 +197,9 @@ def update_artist_profile(request, data: ArtistProfileInputSchema2):
 
     if data.about:
         artist_profile.about = data.about
+
+    if data.stripe_secret_key:
+        artist_profile.stripe_secret_key = data.stripe_secret_key
 
     artist_profile.save()
 

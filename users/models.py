@@ -68,7 +68,13 @@ class ArtistProfile(models.Model):
 
     def decrypt_credentials(self):
         return {
+            "id": self.id,
+            "user": self.user,
+            "banner_image": self.banner_image,
+            "store_name": self.store_name,
             "stripe_secret_key": self.decrypt_secret_key(),
+            "slug": self.slug,
+            "about": self.about,
         }
 
     def save(self, *args, **kwargs):
