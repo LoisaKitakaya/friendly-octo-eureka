@@ -151,6 +151,11 @@ def payment_event_callback(request):
 
             order.save()
 
+            for item in order.items.all(): # type: ignore
+                item.product.stock -= item.quantity
+                
+                item.product.save()
+
             # print(f"✅ Order {order.id} marked as PAID and PROCESSING")
 
             send_email.delay(
