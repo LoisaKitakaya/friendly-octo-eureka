@@ -87,15 +87,15 @@ def payment_event_callback(request):
     order_id = session.get("metadata", {}).get("order_id")
 
     if not order_id:
-        print("⚠️ No order_id found in metadata")
-        
+        # print("⚠️ No order_id found in metadata")
+
         return HttpResponse(status=400)
 
     try:
         order = Order.objects.get(id=parse_uuid(order_id))
     except Order.DoesNotExist:
-        print(f"⚠️ Order {order_id} not found!")
-        
+        # print(f"⚠️ Order {order_id} not found!")
+
         return HttpResponse(status=400)
 
     # ✅ Handling completed sessions
@@ -105,10 +105,10 @@ def payment_event_callback(request):
         if payment_status == "paid":  # Instant payments (cards, etc.)
             order.payment_status = Order.PAID
             order.shipping_status = Order.PROCESSING
-            
+
             order.save()
 
-            print(f"✅ Order {order.id} marked as PAID and PROCESSING")
+            # print(f"✅ Order {order.id} marked as PAID and PROCESSING")
 
             send_email.delay(
                 subject="Order Payment Successful",
@@ -116,16 +116,18 @@ def payment_event_callback(request):
                 receiver_email_address=order.user.email,
             )
         else:
-            print(f"⏳ Order {order.id} payment is still pending...")
+            # print(f"⏳ Order {order.id} payment is still pending...")
+
+            pass
 
     # ✅ Handling async payments that later succeed
     elif event_type == "checkout.session.async_payment_succeeded":
         order.payment_status = Order.PAID
         order.shipping_status = Order.PROCESSING
-        
+
         order.save()
 
-        print(f"✅ Async Payment for Order {order.id} marked as PAID")
+        # print(f"✅ Async Payment for Order {order.id} marked as PAID")
 
         send_email.delay(
             subject="Order Payment Successful",
@@ -137,10 +139,10 @@ def payment_event_callback(request):
     elif event_type == "checkout.session.async_payment_failed":
         order.payment_status = Order.NOT_PAID
         order.shipping_status = Order.CANCELED
-        
+
         order.save()
 
-        print(f"❌ Async Payment for Order {order.id} failed and marked as CANCELED")
+        # print(f"❌ Async Payment for Order {order.id} failed and marked as CANCELED")
 
         send_email.delay(
             subject="Order Payment Failed",
@@ -149,6 +151,8 @@ def payment_event_callback(request):
         )
 
     else:
-        print(f"Unhandled event: {event_type}")
+        # print(f"Unhandled event: {event_type}")
+
+        pass
 
     return HttpResponse(status=200)
