@@ -1,8 +1,8 @@
-import json
 import stripe
 from ninja import Router
 from django.conf import settings
 from products.models import Product
+from .schema import OrderStatusSchema
 from orders.models import Order, OrderItem
 from utils.notifications import send_email
 from utils.stripe import create_payment_link
@@ -11,6 +11,7 @@ from django.views.decorators.csrf import csrf_exempt
 from utils.base import (
     parse_uuid,
     AuthBearer,
+    require_role,
     require_active,
     get_authenticated_user,
 )
@@ -22,6 +23,48 @@ bearer = AuthBearer()
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 endpoint_secret = settings.STRIPE_WEBHOOK_SIGNING_KEY
+
+
+@router.get("/user-orders", auth=bearer, response=dict)
+@require_active
+def get_all_user_orders(request):
+    user = get_authenticated_user(request)
+
+    orders = Order.objects.filter(user=user).order_by("-created_at")
+
+    results = [
+        {
+            "id": str(order.id),
+            "payment_status": order.payment_status,
+            "shipping_status": order.shipping_status,
+            "total_price": float(order.total_price),
+            "created_at": order.created_at.isoformat(),
+            "items": [
+                {
+                    "product_id": str(item.product.id),
+                    "quantity": item.quantity,
+                    "price": float(item.price),
+                    "name": item.product.name,
+                }
+                for item in order.items.all()  # type: ignore
+            ],
+        }
+        for order in orders
+    ]
+
+    return {"orders": results}
+
+@router.put("/user-orders/{order_id}", auth=bearer, response=dict)
+@require_active
+@require_role(is_artist=True)
+def update_user_order(request, order_id: str, data: OrderStatusSchema):
+    order = Order.objects.get(id=parse_uuid(order_id))
+
+    order.shipping_status = data.shipping_status
+    
+    order.save()
+
+    return {"message": "Order status updated successfully"}
 
 
 @router.post("/create-order", auth=bearer, response=dict)

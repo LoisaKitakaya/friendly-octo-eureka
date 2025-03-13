@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Literal
 from ninja import Schema, ModelSchema
 from orders.models import Order, OrderItem
 from users.api.v1.schema import UserSchema
@@ -21,6 +21,10 @@ class OrderItemSchema(ModelSchema):
         depth = 1
 
     product: ProductSchema
+
+
+class OrderStatusSchema(Schema):
+    shipping_status: Literal["pending", "shipped", "delivered", "canceled"]
 
 
 class OrderItemInputSchema(Schema):

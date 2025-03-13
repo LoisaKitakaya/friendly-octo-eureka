@@ -7,25 +7,26 @@ from products.models import Product
 class Order(models.Model):
     """Tracks customer purchases"""
 
-    PAID = "Paid"
-    NOT_PAID = "Not Paid"
+    PAID = "paid"
+    NOT_PAID = "not_paid"
 
     PAYMENT_STATUS = (
-        (PAID, "paid"),
-        (NOT_PAID, "not_paid"),
+        (PAID, "Paid"),
+        (NOT_PAID, "Not Paid"),
     )
 
-    PENDING = "Pending"
-    PROCESSING = "Processing"
-    SHIPPED = "Shipped"
-    DELIVERED = "Delivered"
-    CANCELED = "Canceled"
+    PENDING = "pending"
+    PROCESSING = "processing"
+    SHIPPED = "shipped"
+    DELIVERED = "delivered"
+    CANCELED = "canceled"
 
     STATUS_CHOICES = (
-        (PENDING, "pending"),
-        (SHIPPED, "shipped"),
-        (DELIVERED, "delivered"),
-        (CANCELED, "canceled"),
+        (PENDING, "Pending"),
+        (PROCESSING, "Processing"),
+        (SHIPPED, "Shipped"),
+        (DELIVERED, "Delivered"),
+        (CANCELED, "Canceled"),
     )
 
     id = models.UUIDField(
