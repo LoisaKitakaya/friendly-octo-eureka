@@ -202,3 +202,6 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_ADDRESS_PASSWORD")
 # App Servers
 FRONTEND_URL = os.getenv("FRONTEND_URL")
 BACKEND_URL = os.getenv("BACKEND_URL")
+
+# Stripe configuration
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")

@@ -10,7 +10,7 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "status", "total_price", "created_at")
+    list_display = ("id", "paypal_id", "user", "status", "total_price", "created_at")
     list_filter = ("status", "created_at")
     search_fields = ("user__username",)
     date_hierarchy = "created_at"

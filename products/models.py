@@ -44,6 +44,16 @@ class Product(models.Model):
     )
     name = models.CharField(max_length=255)
     slug = models.SlugField(unique=True, blank=True)
+    stripe_product_id = models.CharField(
+        unique=True,
+        blank=True,
+        null=True,
+    )
+    stripe_price_id = models.CharField(
+        unique=True,
+        blank=True,
+        null=True,
+    )
     description = models.TextField()
     price = models.DecimalField(
         max_digits=10,
