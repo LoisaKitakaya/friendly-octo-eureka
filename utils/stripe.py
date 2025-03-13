@@ -8,16 +8,22 @@ from users.models import ArtistProfile
 
 
 @shared_task
-def _create_product(user_id: uuid.UUID, product_id: uuid.UUID) -> None:
+def _create_product(product_id: uuid.UUID, **kwargs) -> None:
     """Create a new product on Stripe"""
 
     try:
-        artist_profile = ArtistProfile.objects.get(user__id=user_id)
+        user_id = kwargs.get("user_id")
 
-        if artist_profile.decrypt_secret_key() is None:
-            raise Exception("Missing Stripe secret key for artist store")
+        if user_id:
+            artist_profile = ArtistProfile.objects.get(user__id=user_id)
 
-        stripe.api_key = artist_profile.decrypt_secret_key()
+            if artist_profile.decrypt_secret_key() is None:
+                raise Exception("Missing Stripe secret key for artist store")
+
+            stripe.api_key = artist_profile.decrypt_secret_key()
+
+        else:
+            stripe.api_key = settings.STRIPE_SECRET_KEY
 
         product = Product.objects.get(id=product_id)
 
@@ -42,16 +48,22 @@ def _create_product(user_id: uuid.UUID, product_id: uuid.UUID) -> None:
 
 
 @shared_task
-def _update_product(user_id: uuid.UUID, product_id: uuid.UUID) -> None:
+def _update_product(product_id: uuid.UUID, **kwargs) -> None:
     """Update a product on stripe"""
 
     try:
-        artist_profile = ArtistProfile.objects.get(user__id=user_id)
+        user_id = kwargs.get("user_id")
 
-        if artist_profile.decrypt_secret_key() is None:
-            raise Exception("Missing Stripe secret key for artist store")
+        if user_id:
+            artist_profile = ArtistProfile.objects.get(user__id=user_id)
 
-        stripe.api_key = artist_profile.decrypt_secret_key()
+            if artist_profile.decrypt_secret_key() is None:
+                raise Exception("Missing Stripe secret key for artist store")
+
+            stripe.api_key = artist_profile.decrypt_secret_key()
+
+        else:
+            stripe.api_key = settings.STRIPE_SECRET_KEY
 
         product = Product.objects.get(id=product_id)
 
@@ -102,6 +114,7 @@ def create_payment_link(order_id: uuid.UUID, **kwargs) -> dict:
                 }
                 for order_item in order_items
             ],
+            metadata={"order_id": str(order_id)},
         )
 
         return {"payment_url": stripe_payment_link.url}
@@ -109,4 +122,16 @@ def create_payment_link(order_id: uuid.UUID, **kwargs) -> dict:
         raise Exception(f"Error creating payment link: {e}")
 
 
-def create_webhook(): ...
+def create_payment_event_webhook() -> None:
+    try:
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+
+        stripe.WebhookEndpoint.create(
+            enabled_events=[
+                "charge.succeeded",
+                "charge.failed",
+            ],
+            url=f"{settings.BACKEND_URL}/api/v1/orders/payment-event-callback",
+        )
+    except Exception as e:
+        raise Exception(f"Error creating webhook: {e}")

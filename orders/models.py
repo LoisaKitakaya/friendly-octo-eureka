@@ -7,19 +7,26 @@ from products.models import Product
 class Order(models.Model):
     """Tracks customer purchases"""
 
+    PAID = "Paid"
+    NOT_PAID = "Not Paid"
+
+    PAYMENT_STATUS = (
+        (PAID, "paid"),
+        (NOT_PAID, "not_paid"),
+    )
+
     PENDING = "Pending"
     PROCESSING = "Processing"
     SHIPPED = "Shipped"
     DELIVERED = "Delivered"
     CANCELED = "Canceled"
 
-    STATUS_CHOICES = [
-        (PENDING, "Pending"),
-        (PROCESSING, "Processing"),
-        (SHIPPED, "Shipped"),
-        (DELIVERED, "Delivered"),
-        (CANCELED, "Canceled"),
-    ]
+    STATUS_CHOICES = (
+        (PENDING, "pending"),
+        (SHIPPED, "shipped"),
+        (DELIVERED, "delivered"),
+        (CANCELED, "canceled"),
+    )
 
     id = models.UUIDField(
         primary_key=True,
@@ -31,7 +38,12 @@ class Order(models.Model):
         on_delete=models.CASCADE,
         related_name="orders",
     )
-    status = models.CharField(
+    payment_status = models.CharField(
+        max_length=10,
+        choices=PAYMENT_STATUS,
+        default=NOT_PAID,
+    )
+    shipping_status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
         default=PENDING,
