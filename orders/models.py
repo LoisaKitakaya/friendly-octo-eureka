@@ -26,11 +26,6 @@ class Order(models.Model):
         default=uuid.uuid4,
         editable=False,
     )
-    paypal_id = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-    )
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -53,7 +48,7 @@ class Order(models.Model):
         verbose_name_plural = "Buyer Orders"
 
     def __str__(self):
-        return f"Order {self.id} - {self.user.username}"
+        return f"Order for {self.user.username}"
 
 
 class OrderItem(models.Model):

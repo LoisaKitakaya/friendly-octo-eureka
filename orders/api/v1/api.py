@@ -1,6 +1,8 @@
 from ninja import Router
+from django.conf import settings
 from products.models import Product
 from orders.models import Order, OrderItem
+from utils.notifications import send_email
 from utils.stripe import create_payment_link
 from utils.base import (
     parse_uuid,
@@ -37,6 +39,18 @@ def create_order(request, data: OrderInputSchema):
     order.save()
 
     payment_url = create_payment_link(order.id)
+
+    order_url = f"{settings.BACKEND_URL}/admin/orders/order/{order.id}/change/"
+
+    subject = "New Order Created"
+
+    message = f"A new order has been created: {order_url}"
+
+    send_email.delay(
+        subject=subject,
+        message=message,
+        receiver_email_address=settings.ADMIN_PERSONAL_EMAIL,
+    )
 
     return {
         "message": "Order created successfully",

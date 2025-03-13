@@ -107,3 +107,6 @@ def create_payment_link(order_id: uuid.UUID, **kwargs) -> dict:
         return {"payment_url": stripe_payment_link.url}
     except Exception as e:
         raise Exception(f"Error creating payment link: {e}")
+
+
+def create_webhook(): ...
