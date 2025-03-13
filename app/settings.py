@@ -205,3 +205,6 @@ BACKEND_URL = os.getenv("BACKEND_URL")
 
 # Stripe configuration
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+
+# Fernet configuration
+FERNET_KEY = os.getenv("FERNET_KEY")
