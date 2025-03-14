@@ -147,7 +147,7 @@ def create_product(
 
     product.image.save(file.name, file, save=True)
 
-    _create_product.delay(product.id)
+    _create_product.delay(str(product.id))
 
     return {"message": "Product created successfully"}
 
@@ -192,7 +192,7 @@ def update_product(
     if file:
         product.image.save(file.name, file, save=True)
 
-    _update_product.delay(product.id)
+    _update_product.delay(str(product.id))
 
     return {"message": "Product updated successfully"}
 

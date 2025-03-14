@@ -1,30 +1,22 @@
-import uuid
 import stripe
 from celery import shared_task
 from django.conf import settings
+from utils.base import parse_uuid
 from products.models import Product
 from orders.models import OrderItem
 from users.models import ArtistProfile
 
 
+stripe.api_key = settings.STRIPE_SECRET_KEY
+
+
 @shared_task
-def _create_product(product_id: uuid.UUID, **kwargs) -> None:
+def _create_product(product_id: str) -> None:
     """Create a new product on Stripe"""
 
+    product_id = parse_uuid(product_id)  # type: ignore
+
     try:
-        user_id = kwargs.get("user_id")
-
-        if user_id:
-            artist_profile = ArtistProfile.objects.get(user__id=user_id)
-
-            if artist_profile.decrypt_secret_key() is None:
-                raise Exception("Missing Stripe secret key for artist store")
-
-            stripe.api_key = artist_profile.decrypt_secret_key()
-
-        else:
-            stripe.api_key = settings.STRIPE_SECRET_KEY
-
         product = Product.objects.get(id=product_id)
 
         stripe_product = stripe.Product.create(
@@ -48,23 +40,12 @@ def _create_product(product_id: uuid.UUID, **kwargs) -> None:
 
 
 @shared_task
-def _update_product(product_id: uuid.UUID, **kwargs) -> None:
+def _update_product(product_id: str) -> None:
     """Update a product on stripe"""
 
+    product_id = parse_uuid(product_id)  # type: ignore
+
     try:
-        user_id = kwargs.get("user_id")
-
-        if user_id:
-            artist_profile = ArtistProfile.objects.get(user__id=user_id)
-
-            if artist_profile.decrypt_secret_key() is None:
-                raise Exception("Missing Stripe secret key for artist store")
-
-            stripe.api_key = artist_profile.decrypt_secret_key()
-
-        else:
-            stripe.api_key = settings.STRIPE_SECRET_KEY
-
         product = Product.objects.get(id=product_id)
 
         stripe_product = stripe.Product.modify(
@@ -87,23 +68,12 @@ def _update_product(product_id: uuid.UUID, **kwargs) -> None:
         raise Exception(f"Error updating product on Stripe: {e}")
 
 
-def create_payment_link(order_id: uuid.UUID, **kwargs) -> dict:
+def create_payment_link(order_id: str) -> dict:
     """Create a payment link"""
 
+    order_id = parse_uuid(order_id)  # type: ignore
+
     try:
-        user_id = kwargs.get("user_id")
-
-        if user_id:
-            artist_profile = ArtistProfile.objects.get(user__id=user_id)
-
-            if artist_profile.decrypt_secret_key() is None:
-                raise Exception("Missing Stripe secret key for artist store")
-
-            stripe.api_key = artist_profile.decrypt_secret_key()
-
-        else:
-            stripe.api_key = settings.STRIPE_SECRET_KEY
-
         order_items = OrderItem.objects.filter(order__id=order_id)
 
         stripe_payment_link = stripe.PaymentLink.create(
@@ -124,8 +94,6 @@ def create_payment_link(order_id: uuid.UUID, **kwargs) -> dict:
 
 def create_payment_event_webhook() -> None:
     try:
-        stripe.api_key = settings.STRIPE_SECRET_KEY
-
         stripe.WebhookEndpoint.create(
             enabled_events=[
                 "charge.succeeded",

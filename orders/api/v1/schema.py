@@ -24,7 +24,9 @@ class OrderItemSchema(ModelSchema):
 
 
 class OrderStatusSchema(Schema):
-    shipping_status: Literal["pending", "shipped", "delivered", "canceled"]
+    shipping_status: Literal[
+        "pending", "processing", "shipped", "delivered", "canceled"
+    ]
 
 
 class OrderItemInputSchema(Schema):

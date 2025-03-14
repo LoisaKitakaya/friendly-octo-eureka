@@ -3,6 +3,7 @@ from ninja import Router
 from django.conf import settings
 from products.models import Product
 from .schema import OrderStatusSchema
+from users.models import ArtistProfile
 from orders.models import Order, OrderItem
 from utils.notifications import send_email
 from utils.stripe import create_payment_link
@@ -27,6 +28,7 @@ endpoint_secret = settings.STRIPE_WEBHOOK_SIGNING_KEY
 
 @router.get("/user-orders", auth=bearer, response=dict)
 @require_active
+@require_role(is_artist=False)
 def get_all_user_orders(request):
     user = get_authenticated_user(request)
 
@@ -54,6 +56,50 @@ def get_all_user_orders(request):
 
     return {"orders": results}
 
+
+@router.get("/seller-orders", auth=bearer, response=dict)
+@require_active
+@require_role(is_artist=True)
+def get_all_seller_orders(request):
+    user = get_authenticated_user(request)
+
+    artist_profile = ArtistProfile.objects.get(user=user)
+
+    orders = (
+        Order.objects.filter(
+            items__product__artist=artist_profile,
+        )
+        .distinct()
+        .order_by("-created_at")
+    )
+
+    results = []
+    for order in orders:
+        seller_items = [
+            {
+                "product_id": str(item.product.id),
+                "quantity": item.quantity,
+                "price": float(item.price),
+                "name": item.product.name,
+            }
+            for item in order.items.all()  # type: ignore
+            if item.product.artist == artist_profile
+        ]
+        
+        results.append(
+            {
+                "id": str(order.id),
+                "payment_status": order.payment_status,
+                "shipping_status": order.shipping_status,
+                "total_price": float(order.total_price),
+                "created_at": order.created_at.isoformat(),
+                "items": seller_items,
+            }
+        )
+
+    return {"orders": results}
+
+
 @router.put("/user-orders/{order_id}", auth=bearer, response=dict)
 @require_active
 @require_role(is_artist=True)
@@ -61,7 +107,7 @@ def update_user_order(request, order_id: str, data: OrderStatusSchema):
     order = Order.objects.get(id=parse_uuid(order_id))
 
     order.shipping_status = data.shipping_status
-    
+
     order.save()
 
     return {"message": "Order status updated successfully"}
@@ -88,19 +134,31 @@ def create_order(request, data: OrderInputSchema):
 
     order.save()
 
-    payment_url = create_payment_link(order.id)
+    payment_url = create_payment_link(str(order.id))
 
-    order_url = f"{settings.BACKEND_URL}/admin/orders/order/{order.id}/change/"
-
-    subject = "New Order Created"
-
-    message = f"A new order has been created: {order_url}"
-
+    # Notify Admin about the new order
+    order_admin_url = f"{settings.BACKEND_URL}/admin/orders/order/{order.id}/change/"
+    
     send_email.delay(
-        subject=subject,
-        message=message,
+        subject="New Order Created",
+        message=f"A new order has been created: {order_admin_url}",
         receiver_email_address=settings.ADMIN_PERSONAL_EMAIL,
     )
+
+    # Notify the seller(s): get unique seller emails from order items
+    seller_emails = {item.product.artist.user.email for item in order.items.all()} # type: ignore
+    
+    seller_dashboard_url = f"{settings.FRONTEND_URL}/seller?tab=orders"
+    
+    seller_subject = "New Order Created"
+    seller_message = f"A new order has been created. Please check your dashboard: {seller_dashboard_url}"
+    
+    for email in seller_emails:
+        send_email.delay(
+            subject=seller_subject,
+            message=seller_message,
+            receiver_email_address=email,
+        )
 
     return {
         "message": "Order created successfully",
@@ -151,18 +209,47 @@ def payment_event_callback(request):
 
             order.save()
 
-            for item in order.items.all(): # type: ignore
+            for item in order.items.all():  # type: ignore
                 item.product.stock -= item.quantity
-                
+
                 item.product.save()
 
             # print(f"✅ Order {order.id} marked as PAID and PROCESSING")
 
+            # Notify buyer that payment was successful
             send_email.delay(
                 subject="Order Payment Successful",
                 message=f"Your order {order.id} has been paid successfully!",
                 receiver_email_address=order.user.email,
             )
+
+            # Notify admin
+            order_admin_url = (
+                f"{settings.BACKEND_URL}/admin/orders/order/{order.id}/change/"
+            )
+
+            send_email.delay(
+                subject="Order Payment Successful",
+                message=f"Order Payment Successful: {order_admin_url}",
+                receiver_email_address=settings.ADMIN_PERSONAL_EMAIL,
+            )
+
+            # Notify seller(s)
+            seller_emails = {
+                item.product.artist.user.email for item in order.items.all() # type: ignore
+            }
+
+            seller_dashboard_url = f"{settings.FRONTEND_URL}/seller?tab=orders"
+
+            seller_subject = "Order Payment Successful"
+            seller_message = f"Order Payment Successful: Please check your orders dashboard: {seller_dashboard_url}"
+
+            for email in seller_emails:
+                send_email.delay(
+                    subject=seller_subject,
+                    message=seller_message,
+                    receiver_email_address=email,
+                )
         else:
             # print(f"⏳ Order {order.id} payment is still pending...")
 
@@ -177,11 +264,38 @@ def payment_event_callback(request):
 
         # print(f"✅ Async Payment for Order {order.id} marked as PAID")
 
+        # Notify buyer that async payment was successful
         send_email.delay(
             subject="Order Payment Successful",
             message=f"Your order {order.id} has been paid successfully!",
             receiver_email_address=order.user.email,
         )
+
+        # Notify admin
+        order_admin_url = (
+            f"{settings.BACKEND_URL}/admin/orders/order/{order.id}/change/"
+        )
+
+        send_email.delay(
+            subject="Order Payment Successful",
+            message=f"Order Payment Successful: {order_admin_url}",
+            receiver_email_address=settings.ADMIN_PERSONAL_EMAIL,
+        )
+
+        # Notify seller(s)
+        seller_emails = {item.product.artist.user.email for item in order.items.all()} # type: ignore
+
+        seller_dashboard_url = f"{settings.FRONTEND_URL}/seller?tab=orders"
+
+        seller_subject = "Order Payment Successful"
+        seller_message = f"Order Payment Successful: Please check your orders dashboard: {seller_dashboard_url}"
+
+        for email in seller_emails:
+            send_email.delay(
+                subject=seller_subject,
+                message=seller_message,
+                receiver_email_address=email,
+            )
 
     # ❌ Handling failed async payments
     elif event_type == "checkout.session.async_payment_failed":
@@ -192,6 +306,7 @@ def payment_event_callback(request):
 
         # print(f"❌ Async Payment for Order {order.id} failed and marked as CANCELED")
 
+        # Notify buyer about payment failure
         send_email.delay(
             subject="Order Payment Failed",
             message=f"Your payment for order {order.id} has failed.",
