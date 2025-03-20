@@ -49,15 +49,18 @@ def list_products(request):
     return list(Product.objects.all())
 
 
-@router.get("/products/seller", auth=bearer, response=List[ProductSchema])
+@router.get("/products/seller", auth=bearer, response=List[ProductSchema] | dict)
 @require_active
 @require_role(is_artist=True)
 def list_seller_products(request):
     user = get_authenticated_user(request)
 
-    artist = ArtistProfile.objects.get(user=user)
+    try:
+        artist = ArtistProfile.objects.get(user=user)
 
-    return list(Product.objects.filter(artist=artist))
+        return list(Product.objects.filter(artist=artist))
+    except ArtistProfile.DoesNotExist:
+        return {"error": "Artist profile not found.", "status": 404}
 
 
 @router.get("/products/store/{store_slug}", response=StoreSchema)
@@ -212,10 +215,46 @@ def delete_product(request, product_id: str):
     return {"message": "Product deleted successfully"}
 
 
-@router.get("/reviews", auth=bearer, response=List[ReviewSchema])
+@router.get("/reviews/seller", auth=bearer, response=List[ReviewSchema])
 @require_active
-def list_reviews(request):
-    return list(Review.objects.all())
+@require_role(is_artist=True)
+def list_all_product_reviews_for_seller(request):
+    user = get_authenticated_user(request)
+
+    artist_profile = ArtistProfile.objects.get(user=user)
+
+    reviews = Review.objects.filter(
+        product__artist=artist_profile,
+    ).order_by("-created_at")
+
+    return reviews
+
+
+@router.get("/reviews/{product_id}", auth=bearer, response=List[ReviewSchema])
+@require_active
+@require_role(is_artist=False)
+def list_all_product_reviews(request, product_id: str):
+    product = Product.objects.get(id=parse_uuid(product_id))
+
+    reviews = Review.objects.filter(product=product).order_by("-created_at")
+
+    return reviews
+
+
+@router.get("/reviews/{product_id}/buyer", auth=bearer, response=List[ReviewSchema])
+@require_active
+@require_role(is_artist=False)
+def list_all_product_reviews_for_buyer(request, product_id: str):
+    user = get_authenticated_user(request)
+
+    product = Product.objects.get(id=parse_uuid(product_id))
+
+    reviews = Review.objects.filter(
+        product=product,
+        user=user,
+    ).order_by("-created_at")
+
+    return reviews
 
 
 @router.get("/reviews/{review_id}", auth=bearer, response=ReviewSchema)
@@ -228,7 +267,7 @@ def get_review(request, review_id: str):
 
 @router.post("/reviews", auth=bearer, response=dict)
 @require_active
-@require_role(is_artist=True)
+@require_role(is_artist=False)
 def create_review(request, data: ReviewCreateSchema):
     user = get_authenticated_user(request)
 
@@ -248,7 +287,7 @@ def create_review(request, data: ReviewCreateSchema):
 
 @router.put("/reviews/{review_id}", auth=bearer, response=dict)
 @require_active
-@require_role(is_artist=True)
+@require_role(is_artist=False)
 def update_review(request, review_id: str, data: ReviewCreateSchema):
     user = get_authenticated_user(request)
 
@@ -267,7 +306,7 @@ def update_review(request, review_id: str, data: ReviewCreateSchema):
 
 @router.delete("/reviews/{review_id}", auth=bearer, response=dict)
 @require_active
-@require_role(is_artist=True)
+@require_role(is_artist=False)
 def delete_review(request, review_id: str):
     user = get_authenticated_user(request)
 
