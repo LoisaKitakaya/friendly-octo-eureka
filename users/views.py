@@ -44,7 +44,7 @@ def update_password(request):
                 user.set_password(password)
                 user.save()
 
-                redirect_url = f"{settings.FRONTEND_URL}/auth/sign-in"
+                redirect_url = f"{settings.SELLER_FRONTEND_URL if user.is_artist else settings.BUYER_FRONTEND_URL}/auth/sign-in"
 
                 context["redirect_url"] = redirect_url
             else:

@@ -138,7 +138,7 @@ def create_order(request, data: OrderInputSchema):
 
     # Notify Admin about the new order
     order_admin_url = f"{settings.BACKEND_URL}/admin/orders/order/{order.id}/change/"
-    
+
     send_email.delay(
         subject="New Order Created",
         message=f"A new order has been created: {order_admin_url}",
@@ -147,12 +147,12 @@ def create_order(request, data: OrderInputSchema):
 
     # Notify the seller(s): get unique seller emails from order items
     seller_emails = {item.product.artist.user.email for item in order.items.all()} # type: ignore
-    
-    seller_dashboard_url = f"{settings.FRONTEND_URL}/seller?tab=orders"
-    
+
+    seller_dashboard_url = f"{settings.SELLER_FRONTEND_URL}/store/orders"
+
     seller_subject = "New Order Created"
     seller_message = f"A new order has been created. Please check your dashboard: {seller_dashboard_url}"
-    
+
     for email in seller_emails:
         send_email.delay(
             subject=seller_subject,
@@ -239,7 +239,7 @@ def payment_event_callback(request):
                 item.product.artist.user.email for item in order.items.all() # type: ignore
             }
 
-            seller_dashboard_url = f"{settings.FRONTEND_URL}/seller?tab=orders"
+            seller_dashboard_url = f"{settings.SELLER_FRONTEND_URL}/store/orders"
 
             seller_subject = "Order Payment Successful"
             seller_message = f"Order Payment Successful: Please check your orders dashboard: {seller_dashboard_url}"
@@ -285,7 +285,7 @@ def payment_event_callback(request):
         # Notify seller(s)
         seller_emails = {item.product.artist.user.email for item in order.items.all()} # type: ignore
 
-        seller_dashboard_url = f"{settings.FRONTEND_URL}/seller?tab=orders"
+        seller_dashboard_url = f"{settings.SELLER_FRONTEND_URL}/store/orders"
 
         seller_subject = "Order Payment Successful"
         seller_message = f"Order Payment Successful: Please check your orders dashboard: {seller_dashboard_url}"

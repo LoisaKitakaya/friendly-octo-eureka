@@ -33,14 +33,40 @@ router = Router()
 bearer = AuthBearer()
 
 
-@router.post("email-verification", response=dict)
-def email_verification(request, data: EmailVerificationSchema):
+@router.post("email-verification-buyer", response=dict)
+def email_verification_buyer(request, data: EmailVerificationSchema):
     if User.objects.filter(email=data.email).exists():
         raise HttpError(400, "A user with the same email address already exists.")
 
     verification_token = new_user_jwt(email=data.email)
 
-    forward_url = settings.FRONTEND_URL
+    forward_url = settings.BUYER_FRONTEND_URL
+
+    verification_url = (
+        f"{forward_url}/auth/create-account?verification_token={verification_token}"
+    )
+
+    subject = "Email Verification"
+
+    message = f"To complete account verification, click the following link: {verification_url}"
+
+    send_email.delay(
+        subject=subject,
+        message=message,
+        receiver_email_address=data.email,
+    )
+
+    return {"message": f"A verification email has been sent to {data.email}"}
+
+
+@router.post("email-verification-seller", response=dict)
+def email_verification_seller(request, data: EmailVerificationSchema):
+    if User.objects.filter(email=data.email).exists():
+        raise HttpError(400, "A user with the same email address already exists.")
+
+    verification_token = new_user_jwt(email=data.email)
+
+    forward_url = settings.SELLER_FRONTEND_URL
 
     verification_url = (
         f"{forward_url}/auth/create-account?verification_token={verification_token}"
@@ -230,6 +256,58 @@ def login(request, data: LoginUserSchema):
 
     if not user.is_active:
         raise HttpError(401, "Inactive account. Contact administrator.")
+
+    auth_token = login_jwt(user)
+
+    return {
+        "token": auth_token,
+        "id": str(user.id),
+        "username": user.username,
+        "is_artist": user.is_artist,
+        "message": "Authentication successful",
+    }
+
+
+@router.post("login-buyer", response=dict)
+def login_buyer(request, data: LoginUserSchema):
+    user_ = authenticate(username=data.username, password=data.password)
+
+    if user_ is None:
+        raise HttpError(401, "Authentication failed: Wrong username or password")
+
+    user = User.objects.get(username=data.username)
+
+    if not user.is_active:
+        raise HttpError(401, "Inactive account. Contact administrator.")
+
+    if user.is_artist:
+        raise HttpError(401, "Authentication failed: Wrong username or password")
+
+    auth_token = login_jwt(user)
+
+    return {
+        "token": auth_token,
+        "id": str(user.id),
+        "username": user.username,
+        "is_artist": user.is_artist,
+        "message": "Authentication successful",
+    }
+
+
+@router.post("login-seller", response=dict)
+def login_seller(request, data: LoginUserSchema):
+    user_ = authenticate(username=data.username, password=data.password)
+
+    if user_ is None:
+        raise HttpError(401, "Authentication failed: Wrong username or password")
+
+    user = User.objects.get(username=data.username)
+
+    if not user.is_active:
+        raise HttpError(401, "Inactive account. Contact administrator.")
+
+    if not user.is_artist:
+        raise HttpError(401, "Authentication failed: Wrong username or password")
 
     auth_token = login_jwt(user)
 
